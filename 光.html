@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>光影调律位 6.0 - 意境绘卷版</title>
+    <style>
+        :root { --angle: 50; --temp: 50; --diff: 50; --blur: 10px; --color: #333; }
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #050505; color: #eee; font-family: "STKaiti", "KaiTi", serif; display: flex; overflow: hidden; }
+        
+        /* 核心意境舞台 */
+        #stage { 
+            flex: 1; position: relative; 
+            display: flex; flex-direction: column; justify-content: center; align-items: center; 
+            background: #000; 
+            transition: background 2s cubic-bezier(0.4, 0, 0.2, 1); 
+            overflow: hidden; 
+        }
+
+        /* 统一的国风纸张质感层 */
+        #stage::after {
+            content: ""; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background-image: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiB2aWV3Qm94PSIwIDAgMjAwIDIwMCI+PGZpbHRlciBpZD0ibm9pc2UiPjxmZVRurb9ibGUgdHlwZT0iZnJhY3RhbE5vaXNlIiBiYXNlRnJlcXVlbmN5PSIwLjY1IiBudW1PY3RhdmVzPSIzIiBzdGl0Y2hUaWxlcz0ic3RpdGNoIi8+PC9maWx0ZXI+PHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsdGVyPSJ1cmwoI25vaXNlKSIgb3BhY2l0eT0iMC4wNSIvPjwvc3ZnPg==');
+            pointer-events: none; opacity: 0.6; mix-blend-mode: multiply;
+        }
+
+        #poem-wrap { text-align: center; z-index: 10; padding: 30px; border-radius: 15px; }
+        #p-content { font-size: 3.5rem; font-weight: bold; line-height: 1.8; filter: blur(var(--blur)); color: var(--color); transition: 0.6s cubic-bezier(0.2, 0.8, 0.2, 1); text-shadow: 0 0 15px rgba(0,0,0,0.3); }
+        #p-author { font-size: 1.4rem; margin-top: 25px; color: #666; opacity: 0; transition: 1.5s; letter-spacing: 4px; }
+        
+        #glow { position: absolute; width: 100%; height: 100%; pointer-events: none; transition: 0.8s; mix-blend-mode: screen; }
+
+        /* 面板设计 */
+        #panel { width: 380px; background: #111; padding: 25px; display: flex; flex-direction: column; border-left: 1px solid #222; overflow-y: auto; box-shadow: -10px 0 30px rgba(0,0,0,0.5); }
+        .category-select { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 20px; }
+        
+        .poem-selector { display: flex; flex-direction: column; gap: 10px; margin-bottom: 30px; }
+        .poem-btn { 
+            padding: 16px; font-size: 1rem; background: #181818; border: 1px solid #2a2a2a; color: #777; 
+            cursor: pointer; text-align: left; border-radius: 6px; line-height: 1.5; transition: 0.3s;
+        }
+        .poem-btn:hover { background: #222; color: #aaa; border-color: #444; }
+        .poem-btn.active { color: #d4af37; border-color: #d4af37; background: #1e1c15; box-shadow: inset 0 0 15px rgba(212,175,55,0.1); }
+
+        button.cat-btn { padding: 12px; background: #1a1a1a; border: 1px solid #333; color: #666; cursor: pointer; border-radius: 4px; transition: 0.3s; }
+        button.cat-btn.active { background: #8e2121; color: #fff; border-color: #b03030; }
+        
+        .slider-box { margin-bottom: 35px; }
+        label { display: flex; justify-content: space-between; font-size: 0.85rem; color: #666; margin-bottom: 12px; letter-spacing: 1px; }
+        .val-indicator { font-family: monospace; font-weight: bold; padding: 2px 6px; transition: 0.3s; }
+        .in-range { color: #00ffcc; text-shadow: 0 0 10px rgba(0,255,204,0.5); }
+
+        input[type=range] { width: 100%; accent-color: #8e2121; cursor: pointer; height: 4px; }
+
+        #hint { margin-top: auto; padding: 20px; background: rgba(255,255,255,0.02); border-radius: 8px; border: 1px solid #222; }
+        #h-desc { font-size: 0.9rem; color: #555; line-height: 1.6; }
+        
+        .win-glow { animation: winPulse 3s infinite alternate; }
+        @keyframes winPulse { from { text-shadow: 0 0 20px rgba(255,215,0,0.3); } to { text-shadow: 0 0 50px rgba(255,215,0,0.6); } }
+        
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-thumb { background: #333; }
+    </style>
+</head>
+<body>
+
+<div id="stage">
+    <div id="glow"></div>
+    <div id="poem-wrap">
+        <div id="p-content">选取类别以开始</div>
+        <div id="p-author">——</div>
+    </div>
+</div>
+
+<div id="panel">
+    <h2 style="margin: 0 0 20px 0; font-weight: normal; color: #d4af37; letter-spacing: 6px; font-size: 1.5rem;">意境调律 <small style="font-size: 0.5em; color: #444; letter-spacing: 1px;">Easy Mode</small></h2>
+    
+    <div class="category-select">
+        <button onclick="changeCat(0)" class="cat-btn" id="cat0">日光夕阳</button>
+        <button onclick="changeCat(1)" class="cat-btn" id="cat1">明月清寂</button>
+        <button onclick="changeCat(2)" class="cat-btn" id="cat2">花树影动</button>
+        <button onclick="changeCat(3)" class="cat-btn" id="cat3">波光水影</button>
+        <button onclick="changeCat(4)" class="cat-btn" id="cat4">灯火微光</button>
+    </div>
+
+    <div class="poem-selector" id="poem-list"></div>
+
+    <div class="slider-box">
+        <label>光源高度 <span id="val-a" class="val-indicator">50</span></label>
+        <input type="range" id="sl-a" min="0" max="100" value="50">
+    </div>
+    <div class="slider-box">
+        <label>色温(寒暖) <span id="val-t" class="val-indicator">50</span></label>
+        <input type="range" id="sl-t" min="0" max="100" value="50">
+    </div>
+    <div class="slider-box">
+        <label>扩散(虚实) <span id="val-d" class="val-indicator">50</span></label>
+        <input type="range" id="sl-d" min="0" max="100" value="50">
+    </div>
+
+    <div id="hint">
+        <b id="h-title" style="color:#8e2121; letter-spacing: 2px;">调律指引</b><br>
+        <span id="h-desc">择一纸诗心，调三寸微光。</span>
+    </div>
+</div>
+
+<script>
+    const library = [
+        { name: "日光・夕阳", desc: "追求极暖与低角度。残阳如血，气象万千。", 
+          target: {a:[0,40], t:[75,100], d:[50,100]},
+          poems: [
+              ["大漠孤烟直，长河落日圆。", "王维", "linear-gradient(to bottom, #2b1205, #4d220e, #1a0a02)"], // 赭石大漠
+              ["一道残阳铺水中，半江瑟瑟半江红。", "白居易", "linear-gradient(135deg, #6e1515 0%, #1a2e1a 100%)"], // 胭脂红与江水绿
+              ["日出江花红胜火，春来江水绿如蓝。", "白居易", "radial-gradient(circle at top, #8e2121, #0a1f1a)"], // 丹砂重彩
+              ["日照香炉生紫烟，遥看瀑布挂前川。", "李白", "linear-gradient(160deg, #2e1a4d, #10051a, #050505)"] // 烟紫水墨
+          ]
+        },
+        { name: "月光・月夜", desc: "追求清冷与中高角度。月影横斜，积水空明。", 
+          target: {a:[30,90], t:[0,35], d:[10,60]},
+          poems: [
+              ["明月松间照，清泉石上流。", "王维", "radial-gradient(circle at 50% 20%, #1a2b3c, #050a14)"], // 黛蓝月色
+              ["庭下如积水空明，水中藻荇交横。", "苏轼", "linear-gradient(180deg, #0f1c1e, #1a2b2e, #050505)"], // 天青釉色
+              ["海上生明月，天涯共此时。", "张九龄", "radial-gradient(circle at center, #162a44, #020814)"], // 墨蓝海阔
+              ["月落乌啼霜满天，江枫渔火对愁眠。", "张继", "linear-gradient(45deg, #0a0a15, #2e150a)"] // 寒霜灰/渔火赭
+          ]
+        },
+        { name: "花树影动", desc: "低角度长影，光质锐利。看云破月来，影动花摇。", 
+          target: {a:[0,45], t:[35,65], d:[0,40]},
+          poems: [
+              ["云破月来花弄影。", "张先", "radial-gradient(circle at 30% 30%, #222, #0d0d0d)"], // 碎影水墨
+              ["月移花影上栏杆。", "王安石", "linear-gradient(90deg, #0f0f12, #1a1a2e)"], // 幽蓝花影
+              ["绿树阴浓夏日长，楼台倒影入池塘。", "高骈", "linear-gradient(to bottom, #081008, #1a1a1a)"], // 苍绿重彩
+              ["杏花疏影里，吹笛到天明。", "陈与义", "radial-gradient(circle at center, #1a152e, #0d0a12)"] // 沉香紫调
+          ]
+        },
+        { name: "波光水影", desc: "高扩散展现粼粼波光。浮光跃金，沉璧静影。", 
+          target: {a:[50,100], t:[45,85], d:[65,100]},
+          poems: [
+              ["浮光跃金，静影沉璧。", "范仲淹", "radial-gradient(circle, #2e2e0a 0%, #050505 80%)"], // 琥珀重彩
+              ["半亩方塘一鉴开，天光云影共徘徊。", "朱熹", "linear-gradient(135deg, #0a1a24, #1a2b2e)"], // 缥缈青瓷
+              ["湖光秋月两相和，潭面无风镜未磨。", "刘禹锡", "radial-gradient(circle at center, #10242e, #0a151a)"] // 黛绿江面
+          ]
+        },
+        { name: "灯火微光", desc: "极低高度与锐利焦点。蓦然回首，阑珊微芒。", 
+          target: {a:[0,25], t:[65,95], d:[0,30]},
+          poems: [
+              ["蓦然回首，那人却在，灯火阑珊处。", "辛弃疾", "radial-gradient(circle at 50% 80%, #1a0f05, #050505)"], // 朱砂暖调
+              ["月黑见渔灯，孤光一点萤。", "查慎行", "radial-gradient(circle at center, #1a1005 0%, #000 70%)"], // 漆黑点睛
+              ["银烛秋光冷画屏，轻罗小扇扑流萤。", "杜牧", "linear-gradient(160deg, #0f0a1a, #1a0505)"] // 烟紫微光
+          ]
+        }
+    ];
+
+    let curCat = -1, curPoemIdx = 0, isWon = false;
+
+    function changeCat(idx) {
+        curCat = idx;
+        const listEl = document.getElementById('poem-list');
+        listEl.innerHTML = ''; 
+        library[idx].poems.forEach((p, pIdx) => {
+            const btn = document.createElement('button');
+            btn.className = 'poem-btn';
+            btn.innerText = p[0]; 
+            btn.onclick = () => selectPoem(pIdx);
+            listEl.appendChild(btn);
+        });
+        selectPoem(0);
+    }
+
+    function selectPoem(pIdx) {
+        curPoemIdx = pIdx;
+        isWon = false;
+        const cat = library[curCat];
+        document.querySelectorAll('.cat-btn').forEach((b,i)=>b.className=i===curCat?'cat-btn active':'cat-btn');
+        document.querySelectorAll('.poem-btn').forEach((b,i)=>b.className=i===curPoemIdx?'poem-btn active':'poem-btn');
+        document.getElementById('p-content').innerText = cat.poems[curPoemIdx][0];
+        document.getElementById('p-content').classList.remove('win-glow');
+        document.getElementById('p-author').innerText = "—— " + cat.poems[curPoemIdx][1];
+        document.getElementById('p-author').style.opacity = 0;
+        document.getElementById('h-title').innerText = "目标：" + cat.name;
+        document.getElementById('h-desc').innerText = cat.desc;
+        document.getElementById('stage').style.background = "#000"; 
+        update();
+    }
+
+    function update() {
+        if(curCat === -1 || isWon) return;
+        const a = parseInt(document.getElementById('sl-a').value);
+        const t = parseInt(document.getElementById('sl-t').value);
+        const d = parseInt(document.getElementById('sl-d').value);
+        const T = library[curCat].target;
+        
+        updateIndicator('val-a', a, T.a);
+        updateIndicator('val-t', t, T.t);
+        updateIndicator('val-d', d, T.d);
+
+        const blurVal = Math.max(0, (100 - d) / 8);
+        const opVal = 0.1 + (d / 120);
+        const r = 130 + (t * 1.2);
+        const g = 145 + (t * 0.5);
+        const b = 255 - (t * 1.5);
+        const color = `rgb(${r},${g},${b})`;
+        
+        document.documentElement.style.setProperty('--blur', blurVal + "px");
+        document.documentElement.style.setProperty('--color', color);
+        
+        const glow = document.getElementById('glow');
+        glow.style.background = `radial-gradient(circle at 50% ${100-a}%, ${color} 0%, transparent 80%)`;
+        glow.style.opacity = opVal;
+
+        if (a >= T.a[0] && a <= T.a[1] && t >= T.t[0] && t <= T.t[1] && d >= T.d[0] && d <= T.d[1]) win();
+    }
+
+    function updateIndicator(id, val, range) {
+        const el = document.getElementById(id);
+        el.innerText = val;
+        el.className = (val >= range[0] && val <= range[1]) ? 'val-indicator in-range' : 'val-indicator';
+    }
+
+    function win() {
+        isWon = true;
+        const poemData = library[curCat].poems[curPoemIdx];
+        document.documentElement.style.setProperty('--blur', "0px");
+        document.documentElement.style.setProperty('--color', "#fff9e6"); // 宣纸微黄
+        document.getElementById('p-content').classList.add('win-glow');
+        document.getElementById('p-author').style.opacity = 1;
+        document.getElementById('h-desc').innerHTML = "<span style='color:#00ffcc; font-weight:bold;'>✦ 调律完成 ✦</span><br>影落诗心，意入绘卷。";
+        document.getElementById('stage').style.background = poemData[2]; 
+    }
+
+    document.querySelectorAll('input').forEach(i => i.addEventListener('input', update));
+</script>
+
+</body>
+</html>

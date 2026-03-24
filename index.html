@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>意境绘卷 · 墨光影</title>
+    <style>
+        :root { --paper: #f2ede4; --ink: #2c3e50; --gold: #c6a052; }
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: var(--paper); overflow: hidden; font-family: "STKaiti", "KaiTi", serif; }
+        
+        /* 背景宣纸纹理 */
+        body::after {
+            content: ""; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-image: url('https://www.transparenttextures.com/patterns/handmade-paper.png');
+            opacity: 0.5; pointer-events: none; z-index: 200; 
+        }
+
+        /* 粒子背景层 */
+        #main-canvas { position: fixed; top: 0; left: 0; z-index: 1; pointer-events: none; }
+
+        /* 入口选择界面 */
+        #menu {
+            position: relative; z-index: 100; height: 100vh;
+            display: flex; justify-content: center; align-items: center; gap: 40px;
+            transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.5s;
+        }
+
+        .card {
+            width: 220px; height: 400px; background: #fff;
+            border: 1px solid rgba(0,0,0,0.1); box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            cursor: pointer; transition: all 0.4s ease; position: relative; overflow: hidden;
+        }
+        .card:hover { transform: translateY(-15px); box-shadow: 0 20px 50px rgba(0,0,0,0.1); border-color: var(--gold); }
+        
+        .card-title { font-size: 2.5rem; writing-mode: vertical-rl; letter-spacing: 15px; color: var(--ink); z-index: 2; }
+        .card-desc { margin-top: 20px; font-size: 0.9rem; color: #999; z-index: 2; }
+        
+        /* 装饰元素 */
+        .card::before {
+            content: ""; position: absolute; bottom: -20px; right: -20px; 
+            width: 100px; height: 100px; border-radius: 50%; 
+            background: var(--ink); opacity: 0.03; transition: 0.4s;
+        }
+        .card:hover::before { transform: scale(3); opacity: 0.05; }
+
+        /* 内容承载器 */
+        #viewer {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 300; display: none; background: #000;
+        }
+        iframe { width: 100%; height: 100%; border: none; }
+
+        /* 返回按钮 */
+        #back-btn {
+            position: fixed; top: 20px; right: 20px; z-index: 400;
+            padding: 10px 20px; background: rgba(255,255,255,0.2);
+            color: #fff; border: 1px solid rgba(255,255,255,0.3);
+            cursor: pointer; display: none; backdrop-filter: blur(5px);
+            font-family: inherit; letter-spacing: 2px;
+        }
+        #back-btn:hover { background: rgba(255,255,255,0.4); }
+
+        .active-viewer { display: block !important; animation: fadeIn 0.8s; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    </style>
+</head>
+<body>
+
+<canvas id="main-canvas"></canvas>
+
+<button id="back-btn" onclick="closeViewer()">← 返回绘卷</button>
+
+<div id="menu">
+    <div class="card" onclick="openPage('色.html')">
+        <div class="card-title">丹青墨韵</div>
+        <div class="card-desc">识色 · 辩章</div>
+    </div>
+    <div class="card" onclick="openPage('光.html')" style="border-top: 4px solid #8e2121;">
+        <div class="card-title">光影调律</div>
+        <div class="card-desc">引光 · 塑境</div>
+    </div>
+    <div class="card" onclick="openPage('影.html')">
+        <div class="card-title">晷迹流转</div>
+        <div class="card-desc">观影 · 悟时</div>
+    </div>
+</div>
+
+<div id="viewer">
+    <iframe id="frame" src=""></iframe>
+</div>
+
+<script>
+    function openPage(url) {
+        const viewer = document.getElementById('viewer');
+        const frame = document.getElementById('frame');
+        const menu = document.getElementById('menu');
+        const backBtn = document.getElementById('back-btn');
+
+        frame.src = url;
+        viewer.classList.add('active-viewer');
+        menu.style.opacity = '0';
+        backBtn.style.display = 'block';
+        
+        // 确保 iframe 获取焦点以响应某些页面的交互
+        frame.focus();
+    }
+
+    function closeViewer() {
+        const viewer = document.getElementById('viewer');
+        const menu = document.getElementById('menu');
+        const backBtn = document.getElementById('back-btn');
+
+        viewer.classList.remove('active-viewer');
+        document.getElementById('frame').src = "";
+        menu.style.opacity = '1';
+        backBtn.style.display = 'none';
+    }
+
+    // 粒子背景逻辑
+    (function() {
+        const canvas = document.getElementById('main-canvas');
+        const ctx = canvas.getContext('2d');
+        let particles = [];
+        function setSize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+        class P {
+            constructor() { this.init(); }
+            init() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                this.opacity = Math.random() * 0.1;
+                this.vs = Math.random() * 0.001 + 0.0005;
+            }
+            draw() {
+                this.opacity += this.vs;
+                if(this.opacity > 0.15 || this.opacity < 0) this.vs *= -1;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, 1, 0, Math.PI*2);
+                ctx.fillStyle = `rgba(44, 62, 80, ${this.opacity})`;
+                ctx.fill();
+            }
+        }
+        function init() { setSize(); particles = []; for(let i=0; i<80; i++) particles.push(new P()); }
+        function anim() { ctx.clearRect(0,0,canvas.width,canvas.height); particles.forEach(p => p.draw()); requestAnimationFrame(anim); }
+        window.onresize = init; init(); anim();
+    })();
+</script>
+</body>
+</html>
